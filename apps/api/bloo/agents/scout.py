@@ -1,137 +1,197 @@
 from typing import Dict, List
 
+from apps.api.bloo.intelligence.commercial import (
+    get_commercial_accounts,
+)
+
 
 class ScoutAgent:
     """
     BLOO Scout Agent
 
-    Identifies companies worth pursuing based on commercial
-    triggers, fit, urgency, and similarity to known successful
-    customer patterns.
+    Reads from the shared Commercial Intelligence layer,
+    ranks opportunities, and recommends which accounts
+    Blueberry should investigate now.
+
+    Scout does not own account data.
+    It interprets the intelligence layer.
     """
 
     name = "scout"
 
     def __init__(self):
-        self.targets = self._seed_targets()
+        self.accounts = get_commercial_accounts()
 
-    def _seed_targets(self) -> List[Dict]:
+    def _calculate_readiness(self, account: Dict) -> Dict:
         """
-        Initial target set.
-
-        These are structured as public-signal targets.
-        We will replace/expand these with live research,
-        Apollo, Clay, CRM checks, and current external signals.
+        Determine whether an opportunity is ready for outbound
+        or still requires evidence validation.
         """
 
-        return [
-            {
-                "id": "target_merit_beauty",
-                "company": "MERIT Beauty",
-                "industry": "Beauty / DTC",
-                "trigger": (
-                    "International retail expansion creates a "
-                    "time-sensitive customer acquisition moment."
-                ),
-                "why_now": (
-                    "Expansion increases social conversation, product "
-                    "discovery, and purchase-intent opportunities."
-                ),
-                "blueberry_wedge": (
-                    "Turn launch-driven social engagement into "
-                    "personalized conversations, owned customer data, "
-                    "and attributable commerce."
-                ),
-                "fit_score": 94,
-                "urgency_score": 95,
-                "confidence": 0.86,
-                "evidence_status": "public_signal",
-            },
-            {
-                "id": "target_social_beauty_01",
-                "company": "Emerging Beauty Brand",
-                "industry": "Beauty / Social Commerce",
-                "trigger": (
-                    "Rapid social-commerce growth and creator-led "
-                    "distribution."
-                ),
-                "why_now": (
-                    "High growth can create large volumes of unmanaged "
-                    "purchase-intent conversations."
-                ),
-                "blueberry_wedge": (
-                    "Convert creator and social engagement into "
-                    "identifiable, attributable customers."
-                ),
-                "fit_score": 88,
-                "urgency_score": 84,
-                "confidence": 0.62,
-                "evidence_status": "hypothesis",
-            },
-            {
-                "id": "target_sports_01",
-                "company": "Growth Sports Franchise",
-                "industry": "Sports / Entertainment",
-                "trigger": (
-                    "Large fan engagement with limited direct "
-                    "one-to-one commercial interaction."
-                ),
-                "why_now": (
-                    "Fan communities increasingly expect direct, "
-                    "personalized digital engagement."
-                ),
-                "blueberry_wedge": (
-                    "Turn fan social engagement into personalized "
-                    "conversations, known audiences, and commerce."
-                ),
-                "fit_score": 86,
-                "urgency_score": 79,
-                "confidence": 0.58,
-                "evidence_status": "hypothesis",
-            },
-        ]
+        evidence = account.get(
+            "evidence_summary",
+            {},
+        )
+
+        verified = evidence.get(
+            "verified",
+            0,
+        )
+
+        requires_validation = evidence.get(
+            "requires_validation",
+            0,
+        )
+
+        if requires_validation == 0 and verified > 0:
+            status = "outbound_ready"
+        elif verified > 0:
+            status = "research_before_outbound"
+        else:
+            status = "validation_required"
+
+        return {
+            "status": status,
+            "verified_signals": verified,
+            "signals_requiring_validation": requires_validation,
+        }
+
+    def _build_recommendation(
+        self,
+        account: Dict,
+    ) -> Dict:
+
+        hypothesis = account.get(
+            "commercial_hypothesis",
+            {},
+        )
+
+        readiness = self._calculate_readiness(
+            account
+        )
+
+        return {
+            "id": account.get("id"),
+            "company": account.get("company"),
+            "industry": account.get("industry"),
+            "website": account.get("website"),
+            "opportunity_score": account.get(
+                "opportunity_score"
+            ),
+
+            "why_now": hypothesis.get(
+                "why_now"
+            ),
+
+            "problem_hypothesis": hypothesis.get(
+                "problem"
+            ),
+
+            "blueberry_wedge": hypothesis.get(
+                "blueberry_wedge"
+            ),
+
+            "evidence": account.get(
+                "verified_signals",
+                [],
+            ),
+
+            "evidence_summary": account.get(
+                "evidence_summary",
+                {},
+            ),
+
+            "readiness": readiness,
+
+            "recommended_next_step": (
+                "Validate outstanding public signals before outbound."
+                if readiness["status"] == "validation_required"
+                else "Prepare the account for commercial outreach."
+            ),
+        }
 
     def rank_targets(self) -> List[Dict]:
-        ranked = []
+        """
+        Return commercial opportunities in ranked order.
+        """
 
-        for target in self.targets:
-            score = round(
-                (
-                    target["fit_score"] * 0.55
-                    + target["urgency_score"] * 0.45
-                ),
-                1,
-            )
-
-            ranked.append(
-                {
-                    **target,
-                    "opportunity_score": score,
-                }
-            )
+        recommendations = [
+            self._build_recommendation(account)
+            for account in self.accounts
+        ]
 
         return sorted(
-            ranked,
-            key=lambda item: item["opportunity_score"],
+            recommendations,
+            key=lambda item: item.get(
+                "opportunity_score",
+                0,
+            ),
             reverse=True,
         )
 
-    def recommend(self, limit: int = 3) -> Dict:
+    def recommend(
+        self,
+        limit: int = 3,
+    ) -> Dict:
+
         ranked = self.rank_targets()
+
         selected = ranked[:limit]
+
+        outbound_ready = [
+            target
+            for target in selected
+            if target["readiness"]["status"]
+            == "outbound_ready"
+        ]
+
+        research_required = [
+            target
+            for target in selected
+            if target["readiness"]["status"]
+            != "outbound_ready"
+        ]
 
         return {
             "agent": self.name,
+
             "objective": (
-                "Find companies where Blueberry has a credible "
-                "reason to start a commercial conversation now."
+                "Identify the companies Blueberry should spend "
+                "commercial attention on, while preventing weak "
+                "or unverified account theses from reaching outbound."
             ),
-            "targets_considered": len(ranked),
+
+            "targets_considered": len(
+                ranked
+            ),
+
             "recommended_targets": selected,
+
+            "outbound_ready": outbound_ready,
+
+            "research_required": research_required,
+
             "summary": {
-                "recommended": len(selected),
+                "recommended": len(
+                    selected
+                ),
+                "outbound_ready": len(
+                    outbound_ready
+                ),
+                "research_required": len(
+                    research_required
+                ),
                 "highest_score": (
-                    selected[0]["opportunity_score"]
+                    selected[0][
+                        "opportunity_score"
+                    ]
+                    if selected
+                    else None
+                ),
+                "top_account": (
+                    selected[0][
+                        "company"
+                    ]
                     if selected
                     else None
                 ),
