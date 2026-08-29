@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 
+from apps.api.bloo.agents.operator import OperatorAgent
 from apps.api.bloo.brain.store import CompanyBrain
 from examples.blueberry.mellow_sleep import load_mellow_sleep
 
@@ -7,7 +8,7 @@ from examples.blueberry.mellow_sleep import load_mellow_sleep
 app = FastAPI(
     title="BLOO",
     description="Agentic operating layer for company intelligence and execution.",
-    version="0.2.0",
+    version="0.3.0",
 )
 
 
@@ -17,6 +18,13 @@ app = FastAPI(
 
 brain = CompanyBrain()
 load_mellow_sleep(brain)
+
+
+# ---------------------------------------------------------
+# AGENTS
+# ---------------------------------------------------------
+
+operator_agent = OperatorAgent(brain)
 
 
 # ---------------------------------------------------------
@@ -33,6 +41,9 @@ def root():
             "leverage, and fewer dropped loops."
         ),
         "brain": brain.summary(),
+        "agents": {
+            "operator": "active",
+        },
     }
 
 
@@ -58,16 +69,6 @@ def brain_summary():
     }
 
 
-@app.get("/brain/commitments")
-def commitments():
-    return brain.open_commitments()
-
-
-@app.get("/brain/decisions")
-def decisions():
-    return brain.open_decisions()
-
-
 @app.get("/brain/accounts")
 def accounts():
     return brain.accounts
@@ -78,6 +79,25 @@ def insights():
     return brain.insights
 
 
+@app.get("/brain/commitments")
+def commitments():
+    return brain.open_commitments()
+
+
+@app.get("/brain/decisions")
+def decisions():
+    return brain.open_decisions()
+
+
 @app.get("/brain/actions")
 def actions():
     return brain.actions
+
+
+# ---------------------------------------------------------
+# OPERATOR AGENT
+# ---------------------------------------------------------
+
+@app.get("/operator")
+def operator():
+    return operator_agent.recommend()
