@@ -24,8 +24,11 @@ class ScoutAgent:
 
     def _calculate_readiness(self, account: Dict) -> Dict:
         """
-        Determine whether an opportunity is ready for outbound
-        or still requires evidence validation.
+        Respect the readiness assessment produced by the
+        Commercial Intelligence layer.
+
+        Scout interprets intelligence.
+        It does not independently redefine evidence quality.
         """
 
         evidence = account.get(
@@ -33,27 +36,34 @@ class ScoutAgent:
             {},
         )
 
-        verified = evidence.get(
-            "verified",
-            0,
+        intelligence_readiness = evidence.get(
+            "readiness",
+            "research_required",
         )
 
-        requires_validation = evidence.get(
-            "requires_validation",
-            0,
-        )
+        if intelligence_readiness == "outbound_ready":
+            scout_status = "outbound_ready"
 
-        if requires_validation == 0 and verified > 0:
-            status = "outbound_ready"
-        elif verified > 0:
-            status = "research_before_outbound"
+        elif (
+            intelligence_readiness
+            == "commercially_relevant_research"
+        ):
+            scout_status = "research_before_outbound"
+
         else:
-            status = "validation_required"
+            scout_status = "validation_required"
 
         return {
-            "status": status,
-            "verified_signals": verified,
-            "signals_requiring_validation": requires_validation,
+            "status": scout_status,
+            "intelligence_readiness": intelligence_readiness,
+            "verified_signals": evidence.get(
+                "verified",
+                0,
+            ),
+            "signals_requiring_validation": evidence.get(
+                "requires_validation",
+                0,
+            ),
         }
 
     def _build_recommendation(
@@ -74,9 +84,12 @@ class ScoutAgent:
             "id": account.get("id"),
             "company": account.get("company"),
             "industry": account.get("industry"),
-            "website": account.get("website"),
             "opportunity_score": account.get(
                 "opportunity_score"
+            ),
+
+            "why_this_account": account.get(
+                "why_this_account"
             ),
 
             "why_now": hypothesis.get(
@@ -91,8 +104,17 @@ class ScoutAgent:
                 "blueberry_wedge"
             ),
 
+            "pilot_hypothesis": hypothesis.get(
+                "pilot"
+            ),
+
             "evidence": account.get(
                 "verified_signals",
+                [],
+            ),
+
+            "needs_validation": account.get(
+                "needs_validation",
                 [],
             ),
 
@@ -104,9 +126,16 @@ class ScoutAgent:
             "readiness": readiness,
 
             "recommended_next_step": (
-                "Validate outstanding public signals before outbound."
-                if readiness["status"] == "validation_required"
-                else "Prepare the account for commercial outreach."
+                "Prepare the account for outbound."
+                if readiness["status"]
+                == "outbound_ready"
+                else (
+                    "Complete targeted research before outbound."
+                    if readiness["status"]
+                    == "research_before_outbound"
+                    else
+                    "Validate core commercial evidence before progressing."
+                )
             ),
         }
 
@@ -157,7 +186,7 @@ class ScoutAgent:
 
             "objective": (
                 "Identify the companies Blueberry should spend "
-                "commercial attention on, while preventing weak "
+                "commercial attention on while preventing weak "
                 "or unverified account theses from reaching outbound."
             ),
 
@@ -175,12 +204,15 @@ class ScoutAgent:
                 "recommended": len(
                     selected
                 ),
+
                 "outbound_ready": len(
                     outbound_ready
                 ),
+
                 "research_required": len(
                     research_required
                 ),
+
                 "highest_score": (
                     selected[0][
                         "opportunity_score"
@@ -188,10 +220,19 @@ class ScoutAgent:
                     if selected
                     else None
                 ),
+
                 "top_account": (
                     selected[0][
                         "company"
                     ]
+                    if selected
+                    else None
+                ),
+
+                "top_account_readiness": (
+                    selected[0][
+                        "readiness"
+                    ]["status"]
                     if selected
                     else None
                 ),
