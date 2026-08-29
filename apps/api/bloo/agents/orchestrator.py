@@ -2,6 +2,8 @@ from typing import Dict
 
 from apps.api.bloo.agents.critic import CriticAgent
 from apps.api.bloo.agents.operator import OperatorAgent
+from apps.api.bloo.agents.scout import ScoutAgent
+from apps.api.bloo.agents.seller import SellerAgent
 from apps.api.bloo.brain.store import CompanyBrain
 
 
@@ -9,31 +11,62 @@ class OrchestratorAgent:
     """
     BLOO Orchestrator Agent
 
-    Coordinates specialist agents against the shared Company Brain.
-    It decides what to inspect, asks agents for recommendations,
-    routes those recommendations through critique, and returns a
-    final operating view.
+    Coordinates specialist agents around one shared Company Brain.
+
+    Current flow:
+
+    Scout
+      -> finds commercial opportunities
+
+    Seller
+      -> turns the strongest opportunities into pursuits
+
+    Operator
+      -> identifies operational actions
+
+    Critic
+      -> challenges recommendations using evidence
+
+    Orchestrator
+      -> separates autonomous work from CEO attention
     """
 
     name = "orchestrator"
 
     def __init__(self, brain: CompanyBrain):
         self.brain = brain
+
+        self.scout = ScoutAgent()
+        self.seller = SellerAgent()
         self.operator = OperatorAgent(brain)
         self.critic = CriticAgent(brain)
 
     def run(self) -> Dict:
-        """
-        Run the first BLOO multi-agent operating workflow.
 
-        Flow:
-        Company Brain
-            -> Operator
-            -> Critic
-            -> Final recommendation
-        """
+        # -------------------------------------------------
+        # STEP 1 — FIND OPPORTUNITIES
+        # -------------------------------------------------
+
+        scout_output = self.scout.recommend(limit=3)
+
+        # -------------------------------------------------
+        # STEP 2 — BUILD COMMERCIAL PURSUITS
+        # -------------------------------------------------
+
+        seller_output = self.seller.build_from_scout(
+            scout_output,
+            limit=3,
+        )
+
+        # -------------------------------------------------
+        # STEP 3 — OPERATING INTELLIGENCE
+        # -------------------------------------------------
 
         operator_output = self.operator.recommend()
+
+        # -------------------------------------------------
+        # STEP 4 — CRITIC REVIEW
+        # -------------------------------------------------
 
         critic_output = self.critic.review_recommendations(
             operator_output
@@ -41,93 +74,158 @@ class OrchestratorAgent:
 
         approved_actions = critic_output.get(
             "approved_actions",
-            []
+            [],
         )
 
         challenged_actions = critic_output.get(
             "challenged_actions",
-            []
+            [],
         )
 
-        ceo_items = []
+        # -------------------------------------------------
+        # STEP 5 — CEO ATTENTION FILTER
+        # -------------------------------------------------
+
+        ceo_attention = []
+        handled_without_ceo = []
 
         for review in approved_actions:
             original_action = review.get(
                 "original_action",
-                {}
+                {},
             )
 
-            if original_action.get("requires_ceo"):
-                ceo_items.append(review)
+            if original_action.get("requires_ceo", False):
+                ceo_attention.append(review)
+            else:
+                handled_without_ceo.append(review)
 
-        team_items = []
-
-        for review in approved_actions:
-            original_action = review.get(
-                "original_action",
-                {}
-            )
-
-            if not original_action.get("requires_ceo"):
-                team_items.append(review)
+        # -------------------------------------------------
+        # FINAL COMPANY VIEW
+        # -------------------------------------------------
 
         return {
             "agent": self.name,
             "objective": (
-                "Coordinate company intelligence into evidence-backed "
-                "actions while protecting CEO attention."
+                "Coordinate commercial and operational intelligence "
+                "into evidence-backed actions while protecting CEO attention."
             ),
+
             "workflow": [
                 {
                     "step": 1,
-                    "agent": "operator",
+                    "agent": "scout",
                     "status": "completed",
                     "output": (
-                        "Identified operational actions from "
-                        "Company Brain."
+                        "Identified and ranked commercial opportunities."
                     ),
                 },
                 {
                     "step": 2,
-                    "agent": "critic",
+                    "agent": "seller",
                     "status": "completed",
                     "output": (
-                        "Reviewed recommendations against "
-                        "available evidence."
+                        "Converted top opportunities into enterprise pursuits."
                     ),
                 },
                 {
                     "step": 3,
+                    "agent": "operator",
+                    "status": "completed",
+                    "output": (
+                        "Identified operational actions from Company Brain."
+                    ),
+                },
+                {
+                    "step": 4,
+                    "agent": "critic",
+                    "status": "completed",
+                    "output": (
+                        "Reviewed proposed actions against evidence."
+                    ),
+                },
+                {
+                    "step": 5,
                     "agent": "orchestrator",
                     "status": "completed",
                     "output": (
-                        "Separated approved work, challenged work, "
-                        "and CEO attention."
+                        "Separated company work from CEO-attention items."
                     ),
                 },
             ],
+
             "brain_state": self.brain.summary(),
-            "operator": operator_output,
-            "critic": critic_output,
+
+            "commercial": {
+                "scout": scout_output,
+                "seller": seller_output,
+            },
+
+            "operations": {
+                "operator": operator_output,
+                "critic": critic_output,
+            },
+
             "final": {
-                "approved_team_actions": team_items,
-                "ceo_attention": ceo_items,
+                "commercial_opportunities": scout_output.get(
+                    "recommended_targets",
+                    [],
+                ),
+                "commercial_pursuits": seller_output.get(
+                    "pursuits",
+                    [],
+                ),
+                "approved_team_actions": handled_without_ceo,
+                "ceo_attention": ceo_attention,
                 "challenged_actions": challenged_actions,
             },
+
             "summary": {
-                "operator_actions": operator_output[
-                    "summary"
-                ]["total_actions"],
-                "critic_reviewed": critic_output[
-                    "summary"
-                ]["reviewed"],
-                "approved": critic_output[
-                    "summary"
-                ]["approved"],
-                "challenged": critic_output[
-                    "summary"
-                ]["challenged"],
-                "requires_ceo": len(ceo_items),
-                "handled_without_ceo": len(team_items),
+                "commercial_opportunities": len(
+                    scout_output.get(
+                        "recommended_targets",
+                        [],
+                    )
+                ),
+                "commercial_pursuits": len(
+                    seller_output.get(
+                        "pursuits",
+                        [],
+                    )
+                ),
+                "operator_actions": operator_output.get(
+                    "summary",
+                    {},
+                ).get(
+                    "total_actions",
+                    0,
+                ),
+                "critic_reviewed": critic_output.get(
+                    "summary",
+                    {},
+                ).get(
+                    "reviewed",
+                    0,
+                ),
+                "approved": critic_output.get(
+                    "summary",
+                    {},
+                ).get(
+                    "approved",
+                    0,
+                ),
+                "challenged": critic_output.get(
+                    "summary",
+                    {},
+                ).get(
+                    "challenged",
+                    0,
+                ),
+                "requires_ceo": len(
+                    ceo_attention
+                ),
+                "handled_without_ceo": len(
+                    handled_without_ceo
+                ),
             },
         }
