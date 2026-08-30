@@ -1,9 +1,15 @@
-from typing import Dict, List
+from typing import Any, Dict, List
+
+from apps.api.bloo.connectors.apollo import ApolloConnector
+from apps.api.bloo.connectors.enrichment import (
+    EnrichmentRequest,
+    enrichment_summary,
+)
 
 
 class ResearchAgent:
     """
-    BLOO Research Agent
+    BLOO Research Agent.
 
     Converts unresolved commercial validation questions into
     structured research tasks.
@@ -16,17 +22,30 @@ class ResearchAgent:
     - which source or connector should resolve it
     - whether the account is allowed to move toward outbound
 
-    Later this agent can connect to:
-    - web research
-    - Apollo
-    - Clay
-    - CRM
-    - LinkedIn
-    - Shopify / Klaviyo
-    - company systems
+    For buyer research, the agent can use Apollo when an API
+    connection is available.
+
+    Important:
+    Connector failure never becomes synthetic evidence.
+    If buyer identity or contactability cannot be verified,
+    outbound remains blocked.
     """
 
     name = "researcher"
+
+    BUYER_TITLES = [
+        "Chief Marketing Officer",
+        "Chief Growth Officer",
+        "VP Growth",
+        "VP Ecommerce",
+        "Head of Ecommerce",
+        "Head of Lifecycle Marketing",
+        "Head of CRM",
+        "Head of Social",
+        "VP Digital",
+        "Head of Digital",
+        "Head of Global Marketing",
+    ]
 
     def _task_priority(
         self,
@@ -59,7 +78,7 @@ class ResearchAgent:
     def _recommended_source(
         self,
         validation_type: str,
-    ) -> Dict:
+    ) -> Dict[str, str]:
         """
         Recommend the most useful source or connector
         for resolving a research question.
@@ -74,39 +93,36 @@ class ResearchAgent:
                     "and relevant operating stakeholders."
                 ),
             },
-
             "crm_check": {
-                "primary": "CRM",
-                "secondary": "Company Brain",
+                "primary": "company_site",
+                "secondary": "manual_research",
                 "purpose": (
-                    "Check whether the account or contact already "
-                    "exists in pipeline, history, or active ownership."
+                    "Validate CRM, lifecycle, ecommerce, or "
+                    "customer-engagement infrastructure."
                 ),
             },
-
             "marketing_stack": {
-                "primary": "Clay",
-                "secondary": "public_web",
+                "primary": "company_site",
+                "secondary": "manual_research",
                 "purpose": (
-                    "Identify likely commerce, CRM, lifecycle, "
-                    "and customer-data systems."
+                    "Validate the company's observable marketing "
+                    "and ecommerce stack without inventing tooling."
                 ),
             },
-
             "social_volume": {
-                "primary": "public_web",
-                "secondary": "social_platforms",
+                "primary": "social_platforms",
+                "secondary": "manual_research",
                 "purpose": (
-                    "Estimate visible engagement volume and identify "
-                    "where purchase-intent conversations occur."
+                    "Estimate whether social engagement volume "
+                    "is commercially meaningful."
                 ),
             },
-
             "campaign_social_volume": {
-                "primary": "public_web",
-                "secondary": "social_platforms",
+                "primary": "social_platforms",
+                "secondary": "manual_research",
                 "purpose": (
-                    "Measure engagement around the specific active campaign."
+                    "Validate engagement around the specific "
+                    "campaign or commercial trigger."
                 ),
             },
         }
@@ -114,118 +130,279 @@ class ResearchAgent:
         return source_map.get(
             validation_type,
             {
-                "primary": "public_web",
-                "secondary": "manual_research",
+                "primary": "manual_research",
+                "secondary": "web_research",
                 "purpose": (
                     "Resolve the unknown using current public evidence."
                 ),
             },
         )
 
-    def build_tasks_for_target(
+    def _build_tasks_for_target(
         self,
-        target: Dict,
-    ) -> List[Dict]:
+        target: Dict[str, Any],
+    ) -> List[Dict[str, Any]]:
         """
         Turn one Scout target's unresolved questions
         into research jobs.
         """
 
-        tasks = []
+        tasks: List[Dict[str, Any]] = []
 
         company = target.get(
             "company",
             "Unknown company",
         )
 
-        for index, item in enumerate(
-            target.get(
-                "needs_validation",
-                [],
-            ),
-            start=1,
-        ):
-            validation_type = item.get(
-                "type",
-                "general",
-            )
+        account_id = (
+            target.get("account_id")
+            or target.get("id")
+            or target.get("slug")
+            or company.lower().replace(" ", "-")
+        )
 
-            source = self._recommended_source(
-                validation_type
-            )
+        unresolved = (
+            target.get("needs_validation")
+            or target.get("unresolved_questions")
+            or target.get("validation_required")
+            or []
+        )
 
-            tasks.append(
-                {
-                    "id": (
-                        f"research_{target.get('id', 'unknown')}_{index}"
-                    ),
+        for item in unresolved:
+            if isinstance(item, str):
+                validation_type = item
+                question = item
+            else:
+                validation_type = (
+                    item.get("type")
+                    or item.get("validation_type")
+                    or item.get("key")
+                    or "manual_research"
+                )
 
-                    "account_id": target.get(
-                        "id"
-                    ),
+                question = (
+                    item.get("question")
+                    or item.get("description")
+                    or validation_type
+                )
 
-                    "company": company,
+            source = self._recommended_source(validation_type)
 
-                    "validation_type": validation_type,
+            task = {
+                "account_id": account_id,
+                "company": company,
+                "validation_type": validation_type,
+                "question": question,
+                "priority": self._task_priority(validation_type),
+                "recommended_source": source,
+                "status": "open",
+                "blocks_outbound": validation_type
+                in {
+                    "buyer",
+                    "crm_check",
+                    "marketing_stack",
+                },
+            }
 
-                    "question": item.get(
-                        "question"
-                    ),
-
-                    "priority": self._task_priority(
-                        validation_type
-                    ),
-
-                    "recommended_source": source,
-
-                    "status": "open",
-
-                    "result": None,
-
-                    "evidence_status": (
-                        "unresolved"
-                    ),
-
-                    "blocks_outbound": (
-                        validation_type
-                        in {
-                            "buyer",
-                            "crm_check",
-                        }
-                    ),
-                }
-            )
+            tasks.append(task)
 
         return tasks
 
+    def _find_domain(
+        self,
+        target: Dict[str, Any],
+    ) -> str:
+        """
+        Resolve the most likely domain field without
+        pretending one exists when Scout did not provide it.
+        """
+
+        return (
+            target.get("domain")
+            or target.get("website_domain")
+            or target.get("website")
+            or ""
+        )
+
+    def _run_buyer_research(
+        self,
+        target: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """
+        Attempt live buyer discovery through Apollo.
+
+        The connector is treated as an evidence source,
+        never as ground truth by default.
+
+        A candidate is not considered outbound-safe merely
+        because Apollo returned a person.
+        """
+
+        company = target.get(
+            "company",
+            "Unknown company",
+        )
+
+        account_id = (
+            target.get("account_id")
+            or target.get("id")
+            or target.get("slug")
+            or company.lower().replace(" ", "-")
+        )
+
+        domain = self._find_domain(target)
+
+        if not domain:
+            return {
+                "provider": "apollo",
+                "status": "domain_required",
+                "company": company,
+                "contacts": [],
+                "contacts_found": 0,
+                "buyer_research_resolved": False,
+                "outbound_safe": False,
+                "warnings": [
+                    "No verified company domain was available for buyer discovery."
+                ],
+            }
+
+        try:
+            connector = ApolloConnector()
+
+            request = EnrichmentRequest(
+                account_id=account_id,
+                company=company,
+                domain=domain,
+                target_titles=self.BUYER_TITLES,
+            )
+
+            result = connector.enrich_buying_committee(request)
+
+            summary = enrichment_summary(result)
+
+            contacts = [
+                contact.model_dump()
+                for contact in result.contacts
+            ]
+
+            return {
+                **summary,
+                "contacts": contacts,
+                "warnings": list(result.warnings),
+            }
+
+        except Exception as exc:
+            return {
+                "provider": "apollo",
+                "status": "connector_error",
+                "company": company,
+                "contacts": [],
+                "contacts_found": 0,
+                "buyer_research_resolved": False,
+                "outbound_safe": False,
+                "warnings": [
+                    (
+                        "Apollo buyer research could not complete. "
+                        f"{type(exc).__name__}: {exc}"
+                    )
+                ],
+            }
+
+    def _attach_live_research(
+        self,
+        target: Dict[str, Any],
+        tasks: List[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        """
+        Execute only the research that has a safe,
+        explicitly configured live connector.
+
+        Other tasks remain research jobs.
+        """
+
+        buyer_tasks = [
+            task
+            for task in tasks
+            if task["validation_type"] == "buyer"
+        ]
+
+        if not buyer_tasks:
+            return {
+                "buyer_research": None,
+            }
+
+        buyer_research = self._run_buyer_research(target)
+
+        resolved = bool(
+            buyer_research.get("buyer_research_resolved")
+        )
+
+        outbound_safe = bool(
+            buyer_research.get("outbound_safe")
+        )
+
+        for task in buyer_tasks:
+            task["connector_result"] = buyer_research
+
+            if resolved and outbound_safe:
+                task["status"] = "resolved"
+                task["blocks_outbound"] = False
+            else:
+                task["status"] = "blocked"
+                task["blocks_outbound"] = True
+
+        return {
+            "buyer_research": buyer_research,
+        }
+
     def build_from_scout(
         self,
-        scout_output: Dict,
-        limit: int = 3,
-    ) -> Dict:
+        scout_result: Dict[str, Any],
+    ) -> Dict[str, Any]:
         """
-        Convert Scout's research-required targets into
-        a structured research queue.
+        Build the research layer from Scout recommendations.
+
+        Research may add evidence, but it cannot silently
+        manufacture certainty.
         """
 
-        targets = scout_output.get(
-            "research_required",
-            [],
-        )[:limit]
+        targets = (
+            scout_result.get("recommended_targets")
+            or scout_result.get("targets")
+            or scout_result.get("recommendations")
+            or []
+        )
 
-        research_queue = []
+        research_queue: List[Dict[str, Any]] = []
+        live_research: List[Dict[str, Any]] = []
 
         for target in targets:
-            research_queue.extend(
-                self.build_tasks_for_target(
-                    target
-                )
+            target_tasks = self._build_tasks_for_target(target)
+
+            live_result = self._attach_live_research(
+                target,
+                target_tasks,
+            )
+
+            research_queue.extend(target_tasks)
+
+            live_research.append(
+                {
+                    "account_id": (
+                        target.get("account_id")
+                        or target.get("id")
+                        or target.get("slug")
+                    ),
+                    "company": target.get("company"),
+                    **live_result,
+                }
             )
 
         blocking_tasks = [
             task
             for task in research_queue
             if task["blocks_outbound"]
+            and task["status"] != "resolved"
         ]
 
         high_priority = [
@@ -234,56 +411,21 @@ class ResearchAgent:
             if task["priority"] == "high"
         ]
 
+        outbound_safe = bool(targets) and len(blocking_tasks) == 0
+
         return {
             "agent": self.name,
-
             "received_from": "scout",
-
-            "objective": (
-                "Resolve the commercial unknowns that prevent "
-                "high-priority accounts from becoming outbound-ready."
-            ),
-
-            "accounts_in_research": [
-                {
-                    "id": target.get(
-                        "id"
-                    ),
-                    "company": target.get(
-                        "company"
-                    ),
-                    "opportunity_score": target.get(
-                        "opportunity_score"
-                    ),
-                    "readiness": target.get(
-                        "readiness"
-                    ),
-                }
-                for target in targets
-            ],
-
             "research_queue": research_queue,
-
-            "summary": {
-                "accounts": len(
-                    targets
-                ),
-
-                "tasks": len(
-                    research_queue
-                ),
-
-                "high_priority_tasks": len(
-                    high_priority
-                ),
-
-                "blocking_tasks": len(
-                    blocking_tasks
-                ),
-
-                "outbound_allowed": (
-                    len(blocking_tasks) == 0
-                    and len(research_queue) == 0
-                ),
+            "live_research": live_research,
+            "blocking_tasks": blocking_tasks,
+            "high_priority": high_priority,
+            "blocking_count": len(blocking_tasks),
+            "outbound_safe": outbound_safe,
+            "research_complete": outbound_safe,
+            "policy": {
+                "synthetic_contacts_allowed": False,
+                "unverified_contacts_allowed_for_outbound": False,
+                "connector_failure_unlocks_outbound": False,
             },
         }

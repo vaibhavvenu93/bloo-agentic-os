@@ -83,6 +83,7 @@ class ScoutAgent:
         return {
             "id": account.get("id"),
             "company": account.get("company"),
+            "domain": account.get("domain"),
             "industry": account.get("industry"),
             "opportunity_score": account.get(
                 "opportunity_score"

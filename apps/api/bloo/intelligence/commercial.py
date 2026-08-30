@@ -31,6 +31,7 @@ COMMERCIAL_ACCOUNTS: List[Dict] = [
     {
         "id": "target_merit_beauty",
         "company": "MERIT Beauty",
+        "domain": "meritbeauty.com",
         "industry": "Beauty / DTC",
         "status": "active_research",
 
@@ -168,6 +169,7 @@ COMMERCIAL_ACCOUNTS: List[Dict] = [
     {
         "id": "target_sarah_creal_beauty",
         "company": "Sarah Creal Beauty",
+        "domain": "sarahcreal.com",
         "industry": "Beauty / DTC",
         "status": "active_research",
 
@@ -315,6 +317,7 @@ COMMERCIAL_ACCOUNTS: List[Dict] = [
     {
         "id": "target_glossier",
         "company": "Glossier",
+        "domain": "glossier.com",
         "industry": "Beauty / DTC",
         "status": "active_research",
 
