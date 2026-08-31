@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import "./App.css";
+import AskBloo from "./AskBloo";
 
 const fallbackEvidence = [
   "MERIT is scheduled to launch in-store and online with Sephora Australia and New Zealand on September 30, 2026.",
@@ -449,6 +450,8 @@ function App() {
           </div>
         </div>
       </section>
+
+      <AskBloo />
 
       <footer>
         <span>BLOO</span>

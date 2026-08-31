@@ -472,3 +472,314 @@ footer p {
     flex-direction: column;
   }
 }
+
+/* -------------------------------------------------------
+   ASK BLOO
+------------------------------------------------------- */
+
+.askBlooSection {
+  margin-top: 18px;
+  padding: 42px 36px 36px;
+  border: 1px solid rgba(20, 20, 20, 0.09);
+  border-radius: 30px;
+  background: #111111;
+  color: #f7f6f1;
+  overflow: hidden;
+}
+
+.askBlooHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.askBlooHeader > div:first-child {
+  display: flex;
+  flex-direction: column;
+}
+
+.askBlooSection .sectionNumber,
+.askBlooSection .eyebrow,
+.askBlooSection .metaLabel {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  opacity: 0.62;
+}
+
+.askBlooSection h2 {
+  margin: 14px 0 0;
+  font-size: clamp(58px, 7vw, 108px);
+  line-height: 0.9;
+  letter-spacing: -0.065em;
+}
+
+.askBlooMode {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 13px;
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 999px;
+  font-size: 10px;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.liveDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #caff62;
+}
+
+.askBlooIntro {
+  max-width: 760px;
+  margin: 26px 0 30px;
+  color: rgba(255,255,255,0.64);
+  font-size: 18px;
+  line-height: 1.5;
+}
+
+.askBlooComposer {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  padding: 9px;
+  border-radius: 18px;
+  background: #f7f6f1;
+}
+
+.askBlooComposer input {
+  width: 100%;
+  min-width: 0;
+  padding: 16px 18px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #111;
+  font: inherit;
+  font-size: 17px;
+}
+
+.askBlooComposer button {
+  border: 0;
+  border-radius: 12px;
+  padding: 0 24px;
+  background: #5266ff;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.askBlooComposer button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.askBlooError {
+  margin-top: 14px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: #ffd5c8;
+  color: #111;
+}
+
+.askBlooResult {
+  margin-top: 28px;
+}
+
+.askBlooDecision {
+  padding: 32px;
+  border-radius: 22px;
+  background: #caff62;
+  color: #111;
+}
+
+.askBlooDecision h3,
+.workflowBuilder h3 {
+  margin: 12px 0;
+  font-size: clamp(30px, 4vw, 54px);
+  line-height: 0.98;
+  letter-spacing: -0.045em;
+}
+
+.askBlooDecision p {
+  max-width: 760px;
+  margin-bottom: 0;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.decisionBadges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 22px;
+}
+
+.decisionBadges span {
+  padding: 8px 11px;
+  border: 1px solid rgba(0,0,0,0.16);
+  border-radius: 999px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.askBlooGrid {
+  display: grid;
+  grid-template-columns: 0.9fr 1.1fr;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.askBlooPanel {
+  padding: 28px;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 22px;
+}
+
+.askBlooPanel h4 {
+  margin: 10px 0 14px;
+  font-size: 26px;
+  letter-spacing: -0.035em;
+}
+
+.askBlooPanel > p {
+  color: rgba(255,255,255,0.66);
+  line-height: 1.55;
+}
+
+.brainProof {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.brainProof span {
+  border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 999px;
+  padding: 7px 10px;
+  font-size: 11px;
+}
+
+.blockerList {
+  margin-top: 10px;
+}
+
+.blockerRow {
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  gap: 10px;
+  padding: 14px 0;
+  border-top: 1px solid rgba(255,255,255,0.11);
+}
+
+.blockerRow > span {
+  color: rgba(255,255,255,0.4);
+  font-size: 11px;
+}
+
+.blockerRow strong {
+  font-size: 14px;
+}
+
+.blockerRow p {
+  margin: 5px 0 0;
+  color: rgba(255,255,255,0.58);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.workflowBuilder {
+  display: grid;
+  grid-template-columns: 0.8fr 1.2fr;
+  gap: 30px;
+  margin-top: 12px;
+  padding: 30px;
+  border-radius: 22px;
+  background: #5266ff;
+}
+
+.workflowCopy p {
+  max-width: 440px;
+  color: rgba(255,255,255,0.75);
+  line-height: 1.5;
+}
+
+.workflowSteps {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.workflowSteps > div {
+  min-height: 150px;
+  padding: 18px;
+  border: 1px solid rgba(255,255,255,0.22);
+  border-radius: 16px;
+}
+
+.workflowSteps span {
+  display: block;
+  margin-bottom: 30px;
+  font-size: 10px;
+  opacity: 0.6;
+}
+
+.workflowSteps strong {
+  display: block;
+  margin-bottom: 7px;
+}
+
+.workflowSteps p {
+  margin: 0;
+  color: rgba(255,255,255,0.68);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.askBlooAudit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding-top: 24px;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  opacity: 0.55;
+}
+
+.askBlooAudit i {
+  font-style: normal;
+}
+
+@media (max-width: 800px) {
+  .askBlooHeader,
+  .askBlooGrid,
+  .workflowBuilder {
+    grid-template-columns: 1fr;
+  }
+
+  .askBlooHeader {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .askBlooComposer {
+    grid-template-columns: 1fr;
+  }
+
+  .askBlooComposer button {
+    min-height: 52px;
+  }
+
+  .workflowSteps {
+    grid-template-columns: 1fr;
+  }
+}
