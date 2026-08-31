@@ -60,7 +60,6 @@ class OrchestratorAgent:
 
         research_output = self.researcher.build_from_scout(
             scout_output,
-            limit=3,
         )
 
         # -------------------------------------------------
@@ -76,20 +75,16 @@ class OrchestratorAgent:
         # STEP 4 — ENFORCE OUTBOUND GATE
         # -------------------------------------------------
 
-        blocking_tasks = [
-            task
-            for task in research_output.get(
-                "research_queue",
-                [],
-            )
-            if task.get(
-                "blocks_outbound",
+        blocking_tasks = research_output.get(
+            "blocking_tasks",
+            [],
+        )
+
+        outbound_allowed = bool(
+            research_output.get(
+                "outbound_safe",
                 False,
             )
-        ]
-
-        outbound_allowed = (
-            len(blocking_tasks) == 0
         )
 
         commercial_status = (
