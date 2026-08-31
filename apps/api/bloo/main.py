@@ -1,6 +1,7 @@
 from typing import Optional
 
 from fastapi import FastAPI, Query
+from fastapi.middleware.cors import CORSMiddleware
 
 from apps.api.bloo.agents.critic import CriticAgent
 from apps.api.bloo.agents.operator import OperatorAgent
@@ -14,6 +15,15 @@ app = FastAPI(
     description="Agentic operating layer for company intelligence and execution.",
     version="0.5.0",
 )
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["GET"],
+    allow_headers=["*"],
+)
+
 
 
 # ---------------------------------------------------------

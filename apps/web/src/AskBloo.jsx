@@ -1,3 +1,5 @@
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "/api";
+
 import { useState } from "react";
 
 const DEFAULT_QUESTION = "Why is MERIT Beauty blocked from outbound?";
@@ -28,8 +30,8 @@ function AskBloo() {
        * private customer data inside the Company Brain.
        */
       const [brainResponse, orchestratorResponse] = await Promise.all([
-        fetch("/api/brain/query?q=Mellow"),
-        fetch("/api/orchestrator"),
+        fetch(`${API_BASE}/brain/query?q=Mellow`),
+        fetch(`${API_BASE}/orchestrator`),
       ]);
 
       if (!brainResponse.ok || !orchestratorResponse.ok) {

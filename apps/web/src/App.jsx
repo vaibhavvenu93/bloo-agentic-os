@@ -1,3 +1,5 @@
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "/api";
+
 import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 import AskBloo from "./AskBloo";
@@ -45,7 +47,7 @@ function App() {
   useEffect(() => {
     async function loadBloo() {
       try {
-        const response = await fetch("/api/orchestrator");
+        const response = await fetch(`${API_BASE}/orchestrator`);
 
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
